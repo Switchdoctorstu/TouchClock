@@ -22,25 +22,17 @@
 // Stuarts code to drive TFT display 
 */
 //****************************************************
-// define the modes that we can work as
-#define RTCMODE 0  // running off RTC
-#define GPSMODE 1  // running from GPS
-#define SYSMODE 3   // running off system clock
-#define NUMMODES 3
 #define DEBUGWATCHDOG false
 #define DEBUGREPORT true
 #define DEBUGTIME false
-#define DEBUGTOUCH true
+#define DEBUGTOUCH false
 #define DEBUGBUTTONS true
-
-#define MAXI2CDEVICES 10
 
 #define YP A1  // must be an analog pin, use "An" notation!
 #define XM A2  // must be an analog pin, use "An" notation!
 #define YM 7   // can be a digital pin
 #define XP 6   // can be a digital pin
 
-#define BRIGHTNESS 64 // set max brightness
 // Assign human-readable names to some common 16-bit color values:
 #define	BLACK   0x0000
 #define	BLUE    0x001F
@@ -65,7 +57,6 @@
 SWTFT tft;
 tmElements_t tm;
 time_t timeNow;
-DateTime dt; 
 // date storage data type
 struct{
 	int mill; // millenea offset
@@ -74,11 +65,12 @@ struct{
 	int day;
 	int hour;
 	int min;
-} StuTime
+} StuTime;
 
 // bank of stored dates
 
 StuTime myDates[20];
+int myDate=0; pointer to current date
 
 // resistance between X+ and X-  300 ohms across the X plate
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
@@ -104,8 +96,8 @@ unsigned long intervalcheckTime=1012;
 unsigned long intervalcheckButtons=503;
 unsigned long reportTime=1007;
 unsigned long reportInterval=10007;
-unsigned long lasttime=0;
-unsigned long thistime=0; // Time handles
+//unsigned long lasttime=0;
+//unsigned long thistime=0; // Time handles
 unsigned long millisNow=0; // used for checking internal loop timers
 unsigned long NextTimeSyncTime=0;
 unsigned long NextTimeSyncInterval=60023; // 30 seconds
@@ -127,53 +119,79 @@ const int daysInMonth[12]={ // array of days in month
 
 /************************************************************************************/
 /* CODE SEGMENT */
+/************************************************************************************/
 
 
 
 void setup(void) {
-  Serial.begin(9600);
-  Serial.println(F("Touch Clock!"));
+	Serial.begin(19200);
+    Serial.println("Stuart's Orrery Controller V0.1");
+    Serial.println("-------------------------------");
   
-  tft.reset();
+	tft.reset();
   
-  uint16_t identifier = tft.readID();
+	uint16_t identifier = tft.readID();
 
-  Serial.print(F("LCD driver chip: "));
-  Serial.println(identifier, HEX);
+	Serial.print(F("LCD driver chip: "));
+	Serial.println(identifier, HEX);
     
-  tft.begin(identifier);
+	tft.begin(identifier);
  
-	screenRotation=1;
+	screenRotation=1;  // set initial rotation
 	tft.setRotation(screenRotation); 
 	tft.fillScreen(BLACK);
 	screenHeight=tft.height();
 	screenWidth=tft.width();
-	
 	currentcolor = RED;
-	clockSetup();   // setup clock
+	// wdt_disable(); // disable the watchdog
+    
+  
+  // Set the processor time
+	setTime(0,0,0,16,10,1964);
+  
+
 	pinMode(13, OUTPUT);
  
- buttonCount=6;
+	buttonCount=6;
 	// define button sizes
-if(screenRotation==0){
-  buttonSize.y=screenWidth/buttonCount;
-  buttonSize.x=screenHeight/buttonCount;
-}else{
-	buttonSize.x=screenWidth/buttonCount;
-	buttonSize.y=screenHeight/buttonCount;
-}
+	if(screenRotation==0){
+		buttonSize.y=screenWidth/buttonCount;
+		buttonSize.x=screenHeight/buttonCount;
+	}else{
+		buttonSize.x=screenWidth/buttonCount;
+		buttonSize.y=screenHeight/buttonCount;
+	}
 	showMenu();  // draw the buttons
 }
 
 void loop(){
 	doTouch();
     gettime();   // read the time from the RTC or GPS 
-    
-//    checkButtons();
-//    if(DEBUGREPORT)checkReport(); // see if we need to report
-//    checktimesync(); // keep RTC in sync with GPS if available
- showClock();    
+    showClock();    
 }
+
+/**********************************************************/
+/*   Functions   */
+/*   showtime(n)   Binds the clock to this location*/
+/*	StuTime loadTime(n)  */
+/*  saveTime(n,StuTime) saves time to mydates[n]  */
+/* nowTime(n)        Loads current time in to myDates[n] */
+void nowTime(int n){
+	if (n<20) myDate=n;
+}
+
+
+StuTime toStuTime(time_t t){
+	StuTime thistime = new StuTime;
+	thistime.mill=0; // millenea offset
+	thistime.year=year(t);
+	thistime.month=month(t);
+	thistime.day=day(t);
+	thistime.hour=hour(t);
+	thistime.minute(t);
+	return thistime;
+}
+
 void showMenu(){
 	// draws menu on screen
 	
@@ -186,14 +204,11 @@ void showMenu(){
 	  colour=(B11111110<<(i*2));
 	  tft.fillRect(i*bx+1,1, bx-2, by-2, colour);
 	}
- tft.setCursor(07, 05);
-  tft.setTextColor(BLACK);
-  tft.setTextSize(2);
-  tft.print("NOW  SET DEL EDIT NEW LIST");
+	tft.setCursor(07, 05);
+	tft.setTextColor(BLACK);
+	tft.setTextSize(2);
+	tft.print("NOW  SET DEL EDIT NEW LIST");
   
-  
-   
-	
 }
 
 void doTouch(){
@@ -240,30 +255,30 @@ void doTouch(){
 			p.x = (map(p.x, TS_MINX, TS_MAXX, 0, screenWidth));
 			p.y = (map(p.y, TS_MINY, TS_MAXY, 0, screenHeight));
 		}
-   p.x+=xoffset;
-   p.y+=yoffset;
+		p.x+=xoffset;
+		p.y+=yoffset;
    
-    touched=p; // save the position
+		touched=p; // save the position
 		if(DEBUGTOUCH){
-		Serial.print(" Width:"); Serial.print(screenWidth);
-    Serial.println(" Height"); Serial.print(screenHeight);
+			Serial.print(" Width:"); Serial.print(screenWidth);
+			Serial.println(" Height"); Serial.print(screenHeight);
     
-		Serial.print(" Final("); Serial.print(p.x);
-		Serial.print(", "); Serial.print(p.y);
-		Serial.println(")");
+			Serial.print(" Final("); Serial.print(p.x);
+			Serial.print(", "); Serial.print(p.y);
+			Serial.println(")");
 		
-		Serial.print(" Max("); Serial.print(TS_MAXX);
-    Serial.print(", "); Serial.print(TS_MAXY);
-    Serial.print(")");
+			Serial.print(" Max("); Serial.print(TS_MAXX);
+			Serial.print(", "); Serial.print(TS_MAXY);
+			Serial.print(")");
     
-		Serial.print(" Min("); Serial.print(TS_MINX);
-    Serial.print(", "); Serial.print(TS_MINY);
-    Serial.println(")");
-		Serial.print(" Button("); Serial.print(buttonSize.x);
-    Serial.print(", "); Serial.print(buttonSize.y);
-    Serial.println(")");
+			Serial.print(" Min("); Serial.print(TS_MINX);
+			Serial.print(", "); Serial.print(TS_MINY);
+			Serial.println(")");
+			Serial.print(" Button("); Serial.print(buttonSize.x);
+			Serial.print(", "); Serial.print(buttonSize.y);
+			Serial.println(")");
     
-		Serial.print(" Menu:"); Serial.println(menuState);
+			Serial.print(" Menu:"); Serial.println(menuState);
     
 		}
 		   // check button events
@@ -271,10 +286,7 @@ void doTouch(){
 
 		grid+=(p.y/buttonSize.y*10);
 		buttonEvent(grid);
-		   
-
-		 
-		
+		// draw dot where touched	
 		if (((p.y-PENRADIUS) > 0) && ((p.y+PENRADIUS) < tft.height())) {
 		  tft.fillCircle(p.x, p.y, PENRADIUS, currentcolor);
 		  
@@ -305,7 +317,9 @@ void gettime(){
 
   millisNow=millis(); // timer for local loop triggers
   timeNow=now(); // get the current time stamp
-  tm = timeNow;
+  tm.year = year(timeNow);
+	tm.month=month(timeNow);
+	tm.day=day(timeNow);
       
   if(isbst(timeNow)){
       tm.Hour=tm.Hour+1;
@@ -315,26 +329,14 @@ void gettime(){
       if(DEBUGTIME)Serial.println("Date is not in BST");
     
     };
+// write clock to myDates[myDate];
+	myDates[myDate]= toStuTime(timeNow);
+
+
 }
 
-void clockSetup() {  // Clock Setup Routine
-// wdt_disable(); // disable the watchdog
-    
-  delay(2000);// let rtc settle
-    Serial.println("Stuart's LED RTC - GPS and DS1307RTC V0.1");
-    Serial.println("-----------------------------------------");
-  
-  // Set the processor time
-  setTime(0,0,0,16,10,1964);
-  
-  unsigned long t=millis();
-  waitcheckTime = t + intervalcheckTime;  
-  waitcheckButtons = t + intervalcheckButtons;
-  
-  NextTimeSyncTime=t; // trigger initial time sync
-  
-  
-}
+
+
 
 void print2digits(int number) {
   if (number > 0 && number < 10) {
@@ -343,23 +345,6 @@ void print2digits(int number) {
   Serial.print(number);
 }
 
-
-
-
-void checktimesync(){
-  if(millisNow>NextTimeSyncTime){
-    NextTimeSyncTime=millisNow+NextTimeSyncInterval;
-    if(DEBUGTIME)Serial.println("syncing time <*****************************************");
-    // Time precedence
-    // GPS if Valid
-    // RTC if valid
-    // system clock
-
-    // set system time to RTC
-    // need to validate data before setting
-    
-  }
-}
   
 
 void checkReport() {
@@ -630,18 +615,6 @@ void showClock() {
 		tft.setCursor(0, (4*buttonSize.y)+4);
 		tft.setTextColor(GREEN);
 	  tft.setTextSize(2); 
-	//tft.print(tm.tm_year);
-	//  tft.print(":");
-	//  tft.setTextSize(3);	  
-	//  tft.print(twochars(tm.tm_mon));
-	//  tft.print(":");
-	//  tft.print(twochars(tm.tm_day));
-	//  tft.print(":");
-	//  tft.print(twochars(tm.tm_hour));
-	//  tft.print(":");
-	//  tft.print(twochars(tm.tm_min));
-	//  tft.print(":");
-	//  tft.print(twochars(tm.tm_sec));
    
 		tft.print(datestring(tm));
 		tft.setTextSize(3);	  
@@ -653,22 +626,10 @@ void showClock() {
 		tft.setCursor(0, (3*buttonSize.y)+4);
 		tft.setTextColor(GREEN);
 	  tft.setTextSize(2);
-	  /*tft.print(tm.tm_year);
-	  tft.print(":");
-	  tft.setTextSize(3);	  
-	  tft.print(twochars(tm.tm_mon));
-	  tft.print(":");
-	  tft.print(twochars(tm.tm_day));
-	  tft.print(":");
-	  tft.print(twochars(tm.tm_hour));
-	  tft.print(":");
-	  tft.print(twochars(tm.tm_min));
-	  tft.print(":");
-	  tft.print(twochars(tm.tm_sec));
-	  */
-	  tft.setTextSize(3);	  
 	  
 	  tft.print(datestring(tm));
+	  tft.setTextSize(3);	  
+
 	  tft.print(timestring(tm));
    }
 	  
