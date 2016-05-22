@@ -1,3 +1,9 @@
+
+/****************************************************/
+/*    // Stuarts code to drive TFT display          */
+/****************************************************/
+
+
 // include the library code:
 
 #include <Arduino.h>
@@ -16,12 +22,6 @@
 // watchdog
 //#include <avr/wdt.h>
 
-
-/*
-
-// Stuarts code to drive TFT display 
-*/
-//****************************************************
 #define DEBUGWATCHDOG false
 #define DEBUGREPORT true
 #define DEBUGTIME false
@@ -48,7 +48,7 @@
 
 #define BOXSIZE 40
 #define PENRADIUS 3
-
+#define LISTSIZE 20
 
 // ************************************
 // Define Objects and variables
@@ -59,7 +59,7 @@ tmElements_t tm;
 time_t timeNow;
 // date storage data type
 struct stuTime{
-	int mill; // millenea offset
+	int millenia; // millenea offset
 	int year;
 	int month;
 	int day;
@@ -70,7 +70,7 @@ struct stuTime{
 
 // bank of stored dates
 
-stuTime myDates[20];  // array of dates
+stuTime myDates[LISTSIZE];  // array of dates
 int listPtr=0; // pointer to current date
 int clockPtr=0;  // which one is the clock written to
 int displayPtr=0; // which one is displayed on the clockface
@@ -183,10 +183,10 @@ void nowTime(int n){
 	if (n<20) clockPtr=n;
 }
 
-
+// using my own time structures as i need billion year time 
 stuTime toStuTime(time_t t){
 	stuTime thistime;
-	thistime.mill=0; // millenea offset
+	thistime.millenia=0; // millenea offset
 	thistime.year=year(t);
 	thistime.month=month(t);
 	thistime.day=day(t);
@@ -329,7 +329,7 @@ void gettime(){
       if(DEBUGTIME)Serial.println("Date is not in BST");
     
     };
-// write clock to myDates[myDate];
+// write clock to myDates[clockPtr];
 	myDates[clockPtr]= toStuTime(timeNow);
 
 
@@ -386,31 +386,33 @@ void checkReport() {
 
 
 
-String timestring()   {
+String timestring(int n)   {
 	String s= 
-	twochars(tm.Hour)+":"+twochars(tm.Minute)+":"+twochars(tm.Second);
+	twochars(myDates[n].hour)
+		+":"+twochars(myDates[n].minute)
+		+":"+twochars(myDates[n].second);
 return s;
 }
 
-String longDateString(time_t t){
+String longDateString(int n){
   String thisstring;
-    thisstring=dayShortStr(weekday(t));
+    // thisstring=dayShortStr(weekday(t));
+    //  thisstring+=" ";
+      thisstring+=String(myDates[n].day);
       thisstring+=" ";
-      thisstring+=String(day(t));
+      thisstring+=String(monthShortStr(myDates[n].month));
       thisstring+=" ";
-      thisstring+=String(monthShortStr(month(t)));
-      thisstring+=" ";
-      thisstring+=String(year(t));
+      thisstring+=String(myDates[n].year);
   return thisstring;
 }
-String datestring(time_t t){
+String datestring(int n){   // return short date string for myDates[n]
   String thisstring;
     thisstring=
-	thisstring+=String(year(t));
+	thisstring+=myDates[n].year;
       thisstring+=":";
-      thisstring+=twochars(month(t));
+      thisstring+=twochars(myDates[n].month);
       thisstring+=":";
-      thisstring+=twochars(day(t));
+      thisstring+=twochars(myDates[n].day);
       
   return thisstring;
 }
@@ -427,45 +429,79 @@ String twochars(int number){
     }
   }
 }
-void decDays(int n){ // decrement days pointed to by n
-		if (myDates[n].day != 0)
-							{  
-								myDates[n].day-- ;
-							}
-							else
-							{ // oh poo
-			//				  decMonth();
-							  myDates[n].day=daysInMonth[tm.Month];
+
+void adjHours(int n, int a) { // adjust hours n by a
+	a = a % 24; // modulo 24
+	myDates[n].hour += a;  // adjust
+	if (myDates[n].hour <0)
+	{
+		myDates[n].hour+=24;
 	}
-	setClock();
+	if (myDates[n].hour > 24) myDates[n].hour -= 24;
+
+	setClock(n);
 }
 
-void decHours(){
-		if (tm.Hour != 0)
-					{  
-			tm.Hour-- ;
-		}
-		else
-		{ // midnight
-			tm.Hour=23;
-		}
-	setClock();					
-}
-
-void decMonth(){
-	if (tm.Month != 0)	{  
-			tm.Month-- ;
-							}
-							else
-							{
-		//					  tm.Year--;
-							  tm.Month=12;
+void adjMinutes(int n, int a) { // adjust hours n by a
+	a = a % 60; // modulo 24
+	myDates[n].minute += a;  // adjust
+	if (myDates[n].minute <0)
+	{
+		myDates[n].minute += 60;
 	}
-	setClock();
+	if (myDates[n].minute > 60) myDates[n].minute -= 60;
+
+	setClock(n);
+}
+void adjDays(int n, int a) { // adjust days n by a
+	int t = daysInMonth[myDates[n].month];
+
+	a = a % t; // modulo 24
+	myDates[n].day += a;  // adjust
+	if (myDates[n].day <0)
+	{
+		myDates[n].day += t;
+	}
+	if (myDates[n].day > t) myDates[n].day -= t;
+
+	setClock(n);
 }
 
-void setClock(){
-	setTime(tm.Hour,tm.Minute,tm.Second,tm.Day,tm.Month,tm.Year); 
+void adjMonths(int n, int a) { // adjust months n by a
+	a = a % 12; // modulo 24
+	myDates[n].month += a;  // adjust
+	if (myDates[n].month <0)
+	{
+		myDates[n].month += 12;
+	}
+	if (myDates[n].month > 12) myDates[n].month -= 12;
+
+	setClock(n);
+}
+
+void adjYears(int n, int a) { // adjust hours n by a
+	a = a % 1000; // modulo 24
+	myDates[n].year += a;  // adjust
+	if (myDates[n].year <0)
+	{
+		myDates[n].year += 1000;
+	}
+	if (myDates[n].year > 24) myDates[n].y -= 1000;
+
+	setClock(n);
+}
+
+void adjMillenia(int n, int a) { // adjust hours n by a
+	
+	myDates[n].millenia += a;  // adjust
+	
+	setClock(n);
+}
+
+
+
+void setClock(int n){  // set system clock from myDate
+	setTime(myDates[n].hour, myDates[n].minute, myDates[n].second, myDates[n].day, myDates[n].month, myDates[n].year);
 }
 
 void clearScreen(){
@@ -530,49 +566,51 @@ void buttonEvent(int inp){
 		case 1:{ // clock set
 			switch (inp) {
 				case 50: { // dec year
-					tm.tm_year-- ;
-					setClock();
+					adjYears(clockPtr, -1);
 					Serial.println("Dec year!")	;
 				}
 				break;
 				
 				case 51:  { // decrement months
-					decMonth();
-				
+					adjMonths(clockPtr, -1);
 				}
 				break;
 				
 				case 52: { // dec days
-					decDays();
+					adjDays(clockPtr, -1);
 				}
 				break;
 				case 53:  	  { // decrement Hours
-					if (tm.Hour != 0)
-					{  
-						tm.Hour-- ;
-					}
-					else
-					{
-					  tm.Hour=23;
-					}
-					setClock();		
-				  
+					adjHours(clockPtr, -1);
 				}
 				break;
 				case 54:  	  { // decrement Minutes
-					if (tm.tm_min != 0)
-					{  
-						tm.tm_min-- ;
-					}
-						else
-					{
-						  tm.tm_min=59;
-					}
-						// now write it to RTC
-					setClock();
+					adjMinutes(clockPtr, -1);
 				}
 				break;
-							 
+				case 30: { // inc year
+					adjYears(clockPtr, 1);
+					Serial.println("Inc year!");
+				}
+						 break;
+
+				case 31: { // inc months
+					adjMonths(clockPtr, 1);
+				}
+						 break;
+
+				case 32: { // inc days
+					adjDays(clockPtr, 1);
+				}
+						 break;
+				case 33: { // inc Hours
+					adjHours(clockPtr, 1);
+				}
+						 break;
+				case 34: { // inc Minutes
+					adjMinutes(clockPtr, 1);
+				}
+						 break;
 			}
 		}
 		break;
@@ -606,7 +644,7 @@ void showClock() {
   
   // for serial debugging
   if(DEBUGTIME){
-   Serial.print(timestring(tm));
+   Serial.print(timestring(clockPtr));
    }
 	if(tm.Second!=lastsecond){
    if(menuState==1){  // clock set mode
@@ -616,10 +654,10 @@ void showClock() {
 		tft.setTextColor(GREEN);
 	  tft.setTextSize(2); 
    
-		tft.print(datestring(tm));
+		tft.print(datestring(clockPtr));
 		tft.setTextSize(3);	  
 	  	
-		tft.print(timestring(tm));
+		tft.print(timestring(clockPtr));
    } else {
 	   tft.fillRect(0, (3*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
 	   
@@ -627,10 +665,10 @@ void showClock() {
 		tft.setTextColor(GREEN);
 	  tft.setTextSize(2);
 	  
-	  tft.print(datestring(tm));
+	  tft.print(datestring(clockPtr));
 	  tft.setTextSize(3);	  
 
-	  tft.print(timestring(tm));
+	  tft.print(timestring(clockPtr));
    }
 	  
 	  
