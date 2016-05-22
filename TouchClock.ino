@@ -24,7 +24,7 @@
 
 #define DEBUGWATCHDOG false
 #define DEBUGREPORT true
-#define DEBUGTIME false
+#define DEBUGTIME true
 #define DEBUGTOUCH false
 #define DEBUGBUTTONS true
 
@@ -486,7 +486,7 @@ void adjYears(int n, int a) { // adjust hours n by a
 	{
 		myDates[n].year += 1000;
 	}
-	if (myDates[n].year > 24) myDates[n].y -= 1000;
+	if (myDates[n].year > 1000) myDates[n].year -= 1000;
 
 	setClock(n);
 }
