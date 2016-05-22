@@ -58,19 +58,22 @@ SWTFT tft;
 tmElements_t tm;
 time_t timeNow;
 // date storage data type
-struct{
+struct stuTime{
 	int mill; // millenea offset
 	int year;
 	int month;
 	int day;
 	int hour;
-	int min;
-} StuTime;
+	int minute;
+  int second;
+} ;
 
 // bank of stored dates
 
-StuTime myDates[20];
-int myDate=0; pointer to current date
+stuTime myDates[20];  // array of dates
+int listPtr=0; // pointer to current date
+int clockPtr=0;  // which one is the clock written to
+int displayPtr=0; // which one is displayed on the clockface
 
 // resistance between X+ and X-  300 ohms across the X plate
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
@@ -177,18 +180,18 @@ void loop(){
 /*  saveTime(n,StuTime) saves time to mydates[n]  */
 /* nowTime(n)        Loads current time in to myDates[n] */
 void nowTime(int n){
-	if (n<20) myDate=n;
+	if (n<20) clockPtr=n;
 }
 
 
-StuTime toStuTime(time_t t){
-	StuTime thistime = new StuTime;
+stuTime toStuTime(time_t t){
+	stuTime thistime;
 	thistime.mill=0; // millenea offset
 	thistime.year=year(t);
 	thistime.month=month(t);
 	thistime.day=day(t);
 	thistime.hour=hour(t);
-	thistime.minute(t);
+	thistime.minute=minute(t);
 	return thistime;
 }
 
@@ -317,10 +320,7 @@ void gettime(){
 
   millisNow=millis(); // timer for local loop triggers
   timeNow=now(); // get the current time stamp
-  tm.year = year(timeNow);
-	tm.month=month(timeNow);
-	tm.day=day(timeNow);
-      
+ 
   if(isbst(timeNow)){
       tm.Hour=tm.Hour+1;
       if(DEBUGTIME)Serial.println("Date is in BST");
@@ -330,7 +330,7 @@ void gettime(){
     
     };
 // write clock to myDates[myDate];
-	myDates[myDate]= toStuTime(timeNow);
+	myDates[clockPtr]= toStuTime(timeNow);
 
 
 }
@@ -427,15 +427,15 @@ String twochars(int number){
     }
   }
 }
-void decDays(){
-		if (tm.tm_day != 0)
+void decDays(int n){ // decrement days pointed to by n
+		if (myDates[n].day != 0)
 							{  
-								tm.Day-- ;
+								myDates[n].day-- ;
 							}
 							else
 							{ // oh poo
 			//				  decMonth();
-							  tm.Day=daysInMonth[tm.Month];
+							  myDates[n].day=daysInMonth[tm.Month];
 	}
 	setClock();
 }
