@@ -3,6 +3,11 @@
 /*    // Stuarts code to drive TFT display          */
 /****************************************************/
 
+// Display 
+// menu buttons
+// list area
+// edit overlay
+// slider bar
 
 // include the library code:
 
@@ -109,6 +114,7 @@ int screenHeight = 0;
 int screenRotation = 0;
 int buttonCount=6;
 int menuState=0; // which menu we're in
+
 const char *monthName[12] = {// array of month names
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
@@ -117,14 +123,10 @@ const char *monthName[12] = {// array of month names
 const int daysInMonth[12]={ // array of days in month
 	31,28,31,30,31,30,
 	31,31,30,31,30,31};
-// int argcount=0;  // number of arguments
-// int returncode=0; // generic return code
 
 /************************************************************************************/
 /* CODE SEGMENT */
 /************************************************************************************/
-
-
 
 void setup(void) {
 	Serial.begin(19200);
@@ -147,12 +149,9 @@ void setup(void) {
 	screenWidth=tft.width();
 	currentcolor = RED;
 	// wdt_disable(); // disable the watchdog
-    
-  
+
   // Set the processor time
 	setTime(0,0,0,16,10,1964);
-  
-
 	pinMode(13, OUTPUT);
  
 	buttonCount=6;
@@ -212,6 +211,19 @@ void showMenu(){
 	tft.setTextSize(2);
 	tft.print("NOW  SET DEL EDIT NEW LIST");
   
+}
+
+void showList(int n) {
+	// show list of dates starting at n
+	int b = buttonCount - 1;
+	if (n + b > LISTSIZE) n = LISTSIZE - b; // make sure we don't overrun
+	for (int i = 0; i < b; i++) {
+		tft.setCursor(0, (i+1) * buttonSize.y);
+		tft.setTextColor(GREEN);
+		tft.setTextSize(2);
+		tft.print(datestring(n+i));
+	}
+
 }
 
 void doTouch(){
@@ -552,6 +564,7 @@ void buttonEvent(int inp){
 				case 5: // List
 				{
 					menuState=5;
+					showList(listPtr);
 				}
 				break;
 				case 6: //list
@@ -646,30 +659,30 @@ void showClock() {
   if(DEBUGTIME){
    Serial.print(timestring(clockPtr));
    }
-	if(tm.Second!=lastsecond){
-   if(menuState==1){  // clock set mode
-	  tft.fillRect(0, (4*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
-	   
-		tft.setCursor(0, (4*buttonSize.y)+4);
-		tft.setTextColor(GREEN);
-	  tft.setTextSize(2); 
-   
-		tft.print(datestring(clockPtr));
-		tft.setTextSize(3);	  
-	  	
-		tft.print(timestring(clockPtr));
-   } else {
-	   tft.fillRect(0, (3*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
-	   
-		tft.setCursor(0, (3*buttonSize.y)+4);
-		tft.setTextColor(GREEN);
-	  tft.setTextSize(2);
-	  
-	  tft.print(datestring(clockPtr));
-	  tft.setTextSize(3);	  
 
-	  tft.print(timestring(clockPtr));
-   }
+	if(tm.Second!=lastsecond){
+		if(menuState==1){  // clock set mode
+			tft.fillRect(0, (4*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
+	   
+			tft.setCursor(0, (4*buttonSize.y)+4);
+			tft.setTextColor(GREEN);
+			tft.setTextSize(2); 
+   
+			tft.print(datestring(clockPtr));
+			tft.setTextSize(3);	  
+	  	
+			tft.print(timestring(clockPtr));
+	   } else {
+		   tft.fillRect(0, (3*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
+			tft.setCursor(0, (3*buttonSize.y)+4);
+			tft.setTextColor(GREEN);
+			tft.setTextSize(3);
+	  
+			tft.print(datestring(clockPtr));
+			tft.setTextSize(4);	  
+
+			tft.print(timestring(clockPtr));
+		}
 	  
 	  
 	  
