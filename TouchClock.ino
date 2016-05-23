@@ -29,7 +29,7 @@
 
 #define DEBUGWATCHDOG false
 #define DEBUGREPORT true
-#define DEBUGTIME true
+#define DEBUGTIME false
 #define DEBUGTOUCH false
 #define DEBUGBUTTONS true
 
@@ -191,6 +191,15 @@ stuTime toStuTime(time_t t){
 	thistime.day=day(t);
 	thistime.hour=hour(t);
 	thistime.minute=minute(t);
+	if(DEBUGTIME){
+	  Serial.println(" Convert");
+  	Serial.print(thistime.year);
+		Serial.println(year(t));
+	Serial.print(thistime.month);Serial.println(month(t));
+	Serial.print(thistime.day);Serial.println(day(t));
+	Serial.print(thistime.hour);Serial.println(hour(t));
+	Serial.print(thistime.minute);Serial.println(minute(t));
+	}
 	return thistime;
 }
 
@@ -333,17 +342,18 @@ void gettime(){
   millisNow=millis(); // timer for local loop triggers
   timeNow=now(); // get the current time stamp
  
-  if(isbst(timeNow)){
-      tm.Hour=tm.Hour+1;
+ 
+// write clock to myDates[clockPtr];
+	myDates[clockPtr]= toStuTime(timeNow);
+	// adjust for bst
+ if(isbst(timeNow)){
+	 myDates[clockPtr].hour++;  
       if(DEBUGTIME)Serial.println("Date is in BST");
     
     }else{
       if(DEBUGTIME)Serial.println("Date is not in BST");
     
     };
-// write clock to myDates[clockPtr];
-	myDates[clockPtr]= toStuTime(timeNow);
-
 
 }
 
@@ -667,7 +677,7 @@ void showClock() {
 			tft.setCursor(0, (4*buttonSize.y)+4);
 			tft.setTextColor(GREEN);
 			tft.setTextSize(2); 
-   
+      tft.print("C");
 			tft.print(datestring(clockPtr));
 			tft.setTextSize(3);	  
 	  	
@@ -677,7 +687,7 @@ void showClock() {
 			tft.setCursor(0, (3*buttonSize.y)+4);
 			tft.setTextColor(GREEN);
 			tft.setTextSize(3);
-	  
+	  tft.print("C");
 			tft.print(datestring(clockPtr));
 			tft.setTextSize(4);	  
 
