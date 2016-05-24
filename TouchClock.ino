@@ -93,7 +93,7 @@ stuTime offsetTime = {0,0,0,0,0,0,0};  // display time offset - allows FF and re
 // resistance between X+ and X-  300 ohms across the X plate
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 
-int lastsecond; // holds the prevoius second
+int lastsecond=-1; // holds the prevoius second
 
 // screen calibration
 int TS_MINX = 220;
@@ -177,9 +177,15 @@ void setup(void) {
 }
 
 void loop(){
+	// row 0 = buttons
+	// row 1 = clock
+	// row 2 = edit up buttons
+	// row 3 = list item
+	// row 4 = edit down buttons
+	// row 5 = buttons
 	doTouch();
     gettime();   // read the time from the RTC or GPS 
-    showClock();    
+    showClock(1);  // show clock on row 1    
 }
 
 /**********************************************************/
@@ -187,10 +193,7 @@ void loop(){
 /*   showtime(n)   Binds the clock to this location*/
 /*	StuTime loadTime(n)  */
 /*  saveTime(n,StuTime) saves time to mydates[n]  */
-/* nowTime(n)        Loads current time in to myDates[n] */
-void nowTime(int n){
-	if (n<20) clockPtr=n;
-}
+
 
 // using my own time structures as i need billion year time 
 stuTime toStuTime(time_t t){
@@ -215,15 +218,24 @@ stuTime toStuTime(time_t t){
 
 void showMenu(){
 	// draws menu on screen
-	
-	int16_t colour=0;
+	// row 0 = buttons
+	// row 1 = clock
+	// row 2 = edit up buttons
+	// row 3 = list item
+	// row 4 = edit down buttons
+	// row 5 = buttons
 
+	int16_t colour=0;
 	int bx=buttonSize.x;
 	int by=	buttonSize.y;
 	for(int i=0;i<6;i++){ 
 	  delay(200); 
 	  colour=(B11111110<<(i*2));
+	  // top boxes
 	  tft.fillRect(i*bx+1,0, bx-1, by, colour);
+	  // bottom boxes
+	  tft.fillRect(i*bx + 1, screenHeight-by, bx - 1, by, colour);
+
 	}
 	tft.setCursor(07, 05);
 	tft.setTextColor(BLACK);
@@ -339,35 +351,24 @@ void doTouch(){
         if (month(t) == 10) return previousSunday < 25;
         return false; // this line is never gonna happen
     }
-/*
-tmElements_t bstadjust(time_t checkElements){
-// if(isbst(checkElements.tm_day,checkElements.tm_mon,weekday())){
-    
-  
-} 
-*/
-void gettime(){ 
-//      Loads all of the time variables from GPS>RTC>System clock   //
 
-  millisNow=millis(); // timer for local loop triggers
-  timeNow=now(); // get the current time stamp
- 
- 
-// write clock to myDates[clockPtr];
+
+void gettime(){ 
+	//      Load the time variables from System clock   //
+
+	millisNow=millis(); // timer for local loop triggers
+	timeNow=now(); // get the current time stamp
+
+	// write clock to myDates[clockPtr];
 	myDates[clockPtr]= toStuTime(timeNow);
 	// adjust for bst
 	if(isbst(timeNow)){
 	 myDates[clockPtr].hour++;  
       if(DEBUGTIME)Serial.println("Date is in BST");
-    
     }else{
       if(DEBUGTIME)Serial.println("Date is not in BST");
-    
     };
-
 }
-
-
 
 
 void print2digits(int number) {
@@ -377,7 +378,6 @@ void print2digits(int number) {
   Serial.print(number);
 }
 
-  
 
 void checkReport() {
     if( millisNow> reportTime){ // if we're due
@@ -394,28 +394,10 @@ void checkReport() {
       //Serial.println(String( monthShortStr(month(time_now)))+" "+String(dayShortStr(weekday(time_now))));
       Serial.println("Time Status:"+String(timeStatus()));
       Serial.println("Time Now:"+String(timeNow));
-
-      Serial.print("tm. Time = ");
-      print2digits(tm.Hour);
-        Serial.write(':');
-        print2digits(tm.Minute);
-        Serial.write(':');
-        print2digits(tm.Second);
-        Serial.print(", Date(D/M/Y) ");
-        Serial.print(tm.Day);
-        Serial.write('/');
-        Serial.print(tm.Month);
-        Serial.write('/');
-        Serial.print(tmYearToCalendar(tm.Year));
-        Serial.println();
-      
-      
+      Serial.print(tmYearToCalendar(tm.Year));
+      Serial.println();
     }
-    
-    
-  }
-
-
+}
 
 
 String timestring(int n)   {
@@ -423,7 +405,7 @@ String timestring(int n)   {
 	twochars(myDates[n].hour)
 		+":"+twochars(myDates[n].minute)
 		+":"+twochars(myDates[n].second);
-return s;
+	return s;
 }
 
 String longDateString(int n){
@@ -437,6 +419,7 @@ String longDateString(int n){
       thisstring+=String(myDates[n].year);
   return thisstring;
 }
+
 String datestring(int n){   // return short date string for myDates[n]
   String thisstring;
     thisstring=
@@ -448,6 +431,7 @@ String datestring(int n){   // return short date string for myDates[n]
       
   return thisstring;
 }
+
 String twochars(int number){
   if(number==0) {
     return"00";
@@ -562,7 +546,7 @@ void buttonEvent(int inp){
 				{
 					menuState=1;
 					clearScreen();
-					drawEditButtons();
+					drawEditButtons(2); // draw the up/down triangles starting at row 2
 				
 				}
 				break;
@@ -651,20 +635,22 @@ void buttonEvent(int inp){
   
 }
 
-void drawEditButtons(){
+void drawEditButtons(int row){  // row started at 2
   // show edit triangles
-    for(int i=0; i<6; i++) {
+    for(int i=0; i<buttonCount; i++) {
+		// down triangles
       tft.drawTriangle(
-        (i*buttonSize.x)+(buttonSize.x/2)    , 5*buttonSize.y , // peak
-        i*buttonSize.x, 4*buttonSize.y+1, // bottom left
-        (i+1)*buttonSize.x, 4*buttonSize.y+1, // bottom right
+        (i*buttonSize.x)+(buttonSize.x/2)    ,(row+3)*buttonSize.y , // peak
+        i*buttonSize.x, (row+2)*buttonSize.y+1, // bottom left
+        (i+1)*buttonSize.x, (row+2)*buttonSize.y+1, // bottom right
         // tft.color565(0, 0, i*24)
         RED
     );
+	  // up triangles
 	 tft.drawTriangle(
-        (i*buttonSize.x)+(buttonSize.x/2)    , 2*buttonSize.y , // peak
-        i*buttonSize.x, 3*buttonSize.y, // bottom left
-        (i+1)*buttonSize.x, 3*buttonSize.y, // bottom right
+        (i*buttonSize.x)+(buttonSize.x/2)    , row*buttonSize.y , // peak
+        i*buttonSize.x, (row+1)*buttonSize.y, // bottom left
+        (i+1)*buttonSize.x, (row+1)*buttonSize.y, // bottom right
         // tft.color565(0, 0, i*24)
         RED
     );
@@ -672,55 +658,29 @@ void drawEditButtons(){
     }
 }
 
-void showClock() {
+void clearRow(int r) {   // Clear row 
+	tft.fillRect(0, (r * buttonSize.y), tft.width(), buttonSize.y, BLACK);
 
-  
+}
+
+
+void showClock(int row) {
   // for serial debugging
   if(DEBUGTIME){
    Serial.print(timestring(clockPtr));
    }
-
 	if(myDates[clockPtr].second!=lastsecond){
-		/*
-		if(menuState==1){  // clock set mode
-			tft.fillRect(0, (5*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
-	   
-			tft.setCursor(0,(5*buttonSize.y)+4);
-			tft.setTextColor(GREEN);
-			tft.setTextSize(2); 
-			
-			tft.print(datestring(clockPtr));
-			tft.setTextSize(3);	  
-	  	
-			tft.print(timestring(clockPtr));
-			
-	   } else {
-		   tft.fillRect(0, (3*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
-			tft.setCursor(0,(3*buttonSize.y)+4);
-			tft.setTextColor(GREEN);
-			tft.setTextSize(2);
-	  
-			tft.print(datestring(clockPtr));
-			tft.setTextSize(3);	  
-
-			tft.print(timestring(clockPtr));
-		}
-		*/
-		   tft.fillRect(0, (3*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
-			tft.setCursor(0,(3*buttonSize.y)+4);
-			tft.setTextColor(GREEN);
-			tft.setTextSize(2);
-	  
-			tft.print(datestring(clockPtr));
-			tft.setTextSize(3);	  
-
-			tft.print(timestring(clockPtr));
-		
+		clearRow(row);
+		// tft.fillRect(0, (3*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
+		tft.setCursor(0,(3*buttonSize.y)+4);
+		tft.setTextColor(GREEN);
+		tft.setTextSize(2);
+		tft.print(datestring(clockPtr));
+		tft.setTextSize(3);	  
+		tft.print(timestring(clockPtr));
 		if(DEBUGCLOCK){
 			Serial.print("State:"+String(menuState)+" timestring:"+timestring(clockPtr));
 		}
-	  
-	  
 	  lastsecond=myDates[clockPtr].second;
 	}
 }
