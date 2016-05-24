@@ -1,6 +1,14 @@
 
 /****************************************************/
 /*    // Stuarts code to drive TFT display          */
+/*                          */
+/* 2.4 inch touch shield                          */
+/* Shows Time and allows adjustment                         */
+/* Shows a list of stored times for recall               */
+/* Allows fast forward and rewind functions             */
+/*                          */
+/*                          */
+
 /****************************************************/
 
 // Display 
@@ -32,6 +40,7 @@
 #define DEBUGTIME false
 #define DEBUGTOUCH false
 #define DEBUGBUTTONS true
+#define DEBUGCLOCK true
 
 #define YP A1  // must be an analog pin, use "An" notation!
 #define XM A2  // must be an analog pin, use "An" notation!
@@ -79,6 +88,7 @@ stuTime myDates[LISTSIZE];  // array of dates
 int listPtr=0; // pointer to current date
 int clockPtr=0;  // which one is the clock written to
 int displayPtr=0; // which one is displayed on the clockface
+stuTime offsetTime = {0,0,0,0,0,0,0};  // display time offset - allows FF and rewind
 
 // resistance between X+ and X-  300 ohms across the X plate
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
@@ -98,17 +108,17 @@ int oldcolor, currentcolor;
 TSPoint touched; // last valid point
 TSPoint buttonSize; // dimensions of button x,y
 // Declare all the global vars
-unsigned long waitcheckTime=0; // timer for time checking
-unsigned long waitcheckButtons=0; // timer for buttons
-unsigned long intervalcheckTime=1012;
-unsigned long intervalcheckButtons=503;
+//unsigned long waitcheckTime=0; // timer for time checking
+//unsigned long waitcheckButtons=0; // timer for buttons
+//unsigned long intervalcheckTime=1012;
+//unsigned long intervalcheckButtons=503;
 unsigned long reportTime=1007;
 unsigned long reportInterval=10007;
 //unsigned long lasttime=0;
 //unsigned long thistime=0; // Time handles
 unsigned long millisNow=0; // used for checking internal loop timers
-unsigned long NextTimeSyncTime=0;
-unsigned long NextTimeSyncInterval=60023; // 30 seconds
+// unsigned long NextTimeSyncTime=0;
+// unsigned long NextTimeSyncInterval=60023; // 30 seconds
 int screenWidth =0;
 int screenHeight = 0;
 int screenRotation = 0;
@@ -151,7 +161,7 @@ void setup(void) {
 	// wdt_disable(); // disable the watchdog
 
   // Set the processor time
-	setTime(0,0,0,16,10,1964);
+	setTime(01,02,03,16,10,1964);
 	pinMode(13, OUTPUT);
  
 	buttonCount=6;
@@ -213,7 +223,7 @@ void showMenu(){
 	for(int i=0;i<6;i++){ 
 	  delay(200); 
 	  colour=(B11111110<<(i*2));
-	  tft.fillRect(i*bx+1,1, bx-2, by-2, colour);
+	  tft.fillRect(i*bx+1,0, bx-1, by, colour);
 	}
 	tft.setCursor(07, 05);
 	tft.setTextColor(BLACK);
@@ -329,13 +339,13 @@ void doTouch(){
         if (month(t) == 10) return previousSunday < 25;
         return false; // this line is never gonna happen
     }
-
+/*
 tmElements_t bstadjust(time_t checkElements){
 // if(isbst(checkElements.tm_day,checkElements.tm_mon,weekday())){
     
   
 } 
-
+*/
 void gettime(){ 
 //      Loads all of the time variables from GPS>RTC>System clock   //
 
@@ -346,7 +356,7 @@ void gettime(){
 // write clock to myDates[clockPtr];
 	myDates[clockPtr]= toStuTime(timeNow);
 	// adjust for bst
- if(isbst(timeNow)){
+	if(isbst(timeNow)){
 	 myDates[clockPtr].hour++;  
       if(DEBUGTIME)Serial.println("Date is in BST");
     
@@ -588,49 +598,49 @@ void buttonEvent(int inp){
 		break;
 		case 1:{ // clock set
 			switch (inp) {
-				case 50: { // dec year
+				case 40: { // dec year
 					adjYears(clockPtr, -1);
 					Serial.println("Dec year!")	;
 				}
 				break;
 				
-				case 51:  { // decrement months
+				case 41:  { // decrement months
 					adjMonths(clockPtr, -1);
 				}
 				break;
 				
-				case 52: { // dec days
+				case 42: { // dec days
 					adjDays(clockPtr, -1);
 				}
 				break;
-				case 53:  	  { // decrement Hours
+				case 43:  	  { // decrement Hours
 					adjHours(clockPtr, -1);
 				}
 				break;
-				case 54:  	  { // decrement Minutes
+				case 44:  	  { // decrement Minutes
 					adjMinutes(clockPtr, -1);
 				}
 				break;
-				case 30: { // inc year
+				case 20: { // inc year
 					adjYears(clockPtr, 1);
 					Serial.println("Inc year!");
 				}
 						 break;
 
-				case 31: { // inc months
+				case 21: { // inc months
 					adjMonths(clockPtr, 1);
 				}
 						 break;
 
-				case 32: { // inc days
+				case 22: { // inc days
 					adjDays(clockPtr, 1);
 				}
 						 break;
-				case 33: { // inc Hours
+				case 23: { // inc Hours
 					adjHours(clockPtr, 1);
 				}
 						 break;
-				case 34: { // inc Minutes
+				case 24: { // inc Minutes
 					adjMinutes(clockPtr, 1);
 				}
 						 break;
@@ -645,16 +655,16 @@ void drawEditButtons(){
   // show edit triangles
     for(int i=0; i<6; i++) {
       tft.drawTriangle(
-        (i*buttonSize.x)+(buttonSize.x/2)    , 6*buttonSize.y , // peak
-        i*buttonSize.x, 5*buttonSize.y+1, // bottom left
-        (i+1)*buttonSize.x, 5*buttonSize.y+1, // bottom right
+        (i*buttonSize.x)+(buttonSize.x/2)    , 5*buttonSize.y , // peak
+        i*buttonSize.x, 4*buttonSize.y+1, // bottom left
+        (i+1)*buttonSize.x, 4*buttonSize.y+1, // bottom right
         // tft.color565(0, 0, i*24)
         RED
     );
 	 tft.drawTriangle(
-        (i*buttonSize.x)+(buttonSize.x/2)    , 3*buttonSize.y , // peak
-        i*buttonSize.x, 4*buttonSize.y, // bottom left
-        (i+1)*buttonSize.x, 4*buttonSize.y, // bottom right
+        (i*buttonSize.x)+(buttonSize.x/2)    , 2*buttonSize.y , // peak
+        i*buttonSize.x, 3*buttonSize.y, // bottom left
+        (i+1)*buttonSize.x, 3*buttonSize.y, // bottom right
         // tft.color565(0, 0, i*24)
         RED
     );
@@ -670,33 +680,48 @@ void showClock() {
    Serial.print(timestring(clockPtr));
    }
 
-	if(tm.Second!=lastsecond){
+	if(myDates[clockPtr].second!=lastsecond){
+		/*
 		if(menuState==1){  // clock set mode
-			tft.fillRect(0, (4*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
+			tft.fillRect(0, (5*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
 	   
-			tft.setCursor(0, (4*buttonSize.y)+4);
+			tft.setCursor(0,(5*buttonSize.y)+4);
 			tft.setTextColor(GREEN);
 			tft.setTextSize(2); 
-      tft.print("C");
+			
 			tft.print(datestring(clockPtr));
 			tft.setTextSize(3);	  
 	  	
 			tft.print(timestring(clockPtr));
+			
 	   } else {
 		   tft.fillRect(0, (3*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
-			tft.setCursor(0, (3*buttonSize.y)+4);
+			tft.setCursor(0,(3*buttonSize.y)+4);
 			tft.setTextColor(GREEN);
-			tft.setTextSize(3);
-	  tft.print("C");
+			tft.setTextSize(2);
+	  
 			tft.print(datestring(clockPtr));
-			tft.setTextSize(4);	  
+			tft.setTextSize(3);	  
 
 			tft.print(timestring(clockPtr));
 		}
+		*/
+		   tft.fillRect(0, (3*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
+			tft.setCursor(0,(3*buttonSize.y)+4);
+			tft.setTextColor(GREEN);
+			tft.setTextSize(2);
+	  
+			tft.print(datestring(clockPtr));
+			tft.setTextSize(3);	  
+
+			tft.print(timestring(clockPtr));
+		
+		if(DEBUGCLOCK){
+			Serial.print("State:"+String(menuState)+" timestring:"+timestring(clockPtr));
+		}
 	  
 	  
-	  
-	  lastsecond=tm.Second;
+	  lastsecond=myDates[clockPtr].second;
 	}
 }
 
