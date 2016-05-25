@@ -480,7 +480,7 @@ String twochars(int number){
   }
 }
 
-void adjHours(int n, int a) { // adjust hours n by a
+void adjHours(int n, int a) { 	// adjust hours n by a
 	a = a % 24; // modulo 24
 	myDates[n].hour += a;  // adjust
 	if (myDates[n].hour <0)
@@ -488,8 +488,9 @@ void adjHours(int n, int a) { // adjust hours n by a
 		myDates[n].hour+=24;
 	}
 	if (myDates[n].hour > 24) myDates[n].hour -= 24;
-
-	setClock(n);
+	if(n==clockPtr){
+		setClock(n);
+	}
 }
 
 void adjMinutes(int n, int a) { // adjust hours n by a
@@ -497,39 +498,46 @@ void adjMinutes(int n, int a) { // adjust hours n by a
 	myDates[n].minute += a;  // adjust
 	if (myDates[n].minute <0)
 	{
-		myDates[n].minute += 60;
+		myDates[n].minute += 59;
 	}
-	if (myDates[n].minute > 60) myDates[n].minute -= 60;
-
-	setClock(n);
+	if (myDates[n].minute > 59) myDates[n].minute -= 60;
+if(n==clockPtr){
+		setClock(n);
+	}
+	// setClock(n);
 }
-void adjDays(int n, int a) { // adjust days n by a
+void adjDays(int n, int a) { 	// adjust days n by a
 	int t = daysInMonth[myDates[n].month];
 
 	a = a % t; // modulo 24
 	myDates[n].day += a;  // adjust
-	if (myDates[n].day <0)
+	if (myDates[n].day <1)
 	{
 		myDates[n].day += t;
 	}
 	if (myDates[n].day > t) myDates[n].day -= t;
-
-	setClock(n);
+if(n==clockPtr){
+		setClock(n);
+	}
+	// setClock(n);
 }
 
-void adjMonths(int n, int a) { // adjust months n by a
-	a = a % 12; // modulo 24
+void adjMonths(int n, int a) {  // adjust months n by a
+	a = a % 12; // modulo 12
 	myDates[n].month += a;  // adjust
-	if (myDates[n].month <0)
+	if (myDates[n].month <1)
 	{
 		myDates[n].month += 12;
 	}
-	if (myDates[n].month > 12) myDates[n].month -= 12;
+	myDates[n].month %= 12; // mod 12 ??
+	//if (myDates[n].month > 12) myDates[n].month -= 12;
 
-	setClock(n);
+	if(n==clockPtr){
+		setClock(n);
+	}// setClock(n);
 }
 
-void adjYears(int n, int a) { // adjust hours n by a
+void adjYears(int n, int a) {  // adjust hours n by a
 	a = a % 1000; // modulo 24
 	myDates[n].year += a;  // adjust
 	if (myDates[n].year <0)
@@ -538,14 +546,18 @@ void adjYears(int n, int a) { // adjust hours n by a
 	}
 	if (myDates[n].year > 1000) myDates[n].year -= 1000;
 
-	setClock(n);
+	if(n==clockPtr){
+		setClock(n);
+	}// setClock(n);
 }
 
-void adjMillenia(int n, int a) { // adjust hours n by a
+void adjMillenia(int n, int a) {  // adjust hours n by a
 	
 	myDates[n].millenia += a;  // adjust
 	
-	setClock(n);
+	if(n==clockPtr){
+		setClock(n);
+	}// setClock(n);
 }
 
 
@@ -565,8 +577,7 @@ void buttonEvent(int inp){
 	  Serial.print("Button:");
 	  Serial.println(inp);
 	}
-	if(inp==0)menuState=0;  // NOW button resets state
-
+	
 	switch (inp) {
 		case 0: // Now
 		{
@@ -580,10 +591,13 @@ void buttonEvent(int inp){
 		case 1: // Set
 		{
 			menuState=1;
-			editMode=true;
-			clearScreen();
-			drawEditButtons(2); // draw the up/down triangles starting at row 2
-		
+			if(editMode==false){
+				editMode=true;
+				clearScreen();
+				drawEditButtons(2); // draw the up/down triangles starting at row 2
+			} else{ 
+				editMode=false;
+			}
 		}
 		break;
 		case 2: // Save
@@ -734,7 +748,7 @@ void showClock(int row) {
 	tft.setTextColor(GREEN);
 	tft.setTextSize(2);
 	tft.print(String(myDates[clockPtr].year)+":");
-	tft.print(monthName[myDates[clockPtr].month]);
+	tft.print(monthName[myDates[clockPtr].month-1]);
 	tft.print(":");
 
 	tft.setTextSize(3);	  
@@ -752,7 +766,7 @@ void showListItem(int row) {   // show the curent list item at row n
 	tft.setTextColor(GREEN);
 	tft.setTextSize(2);
 	tft.print(String(myDates[listPtr].year)+":");
-	tft.print(monthName[myDates[listPtr].month]);
+	tft.print(monthName[myDates[listPtr].month-1]);
 	tft.print(":");
 	tft.setTextSize(3);	  
 	tft.print(twochars(myDates[listPtr].day));
