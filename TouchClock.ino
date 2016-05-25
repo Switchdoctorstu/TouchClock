@@ -529,8 +529,8 @@ void adjMonths(int n, int a) {  // adjust months n by a
 	{
 		myDates[n].month += 12;
 	}
-	myDates[n].month %= 12; // mod 12 ??
-	//if (myDates[n].month > 12) myDates[n].month -= 12;
+	//myDates[n].month %= 12; // mod 12 ??
+	if (myDates[n].month > 12) myDates[n].month -= 12;
 
 	if(n==clockPtr){
 		setClock(n);
@@ -559,7 +559,6 @@ void adjMillenia(int n, int a) {  // adjust hours n by a
 		setClock(n);
 	}// setClock(n);
 }
-
 
 
 void setClock(int n){  // set system clock from myDate
