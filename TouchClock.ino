@@ -1,4 +1,4 @@
-
+// x
 /****************************************************/
 /*    // Stuarts code to drive TFT display          */
 /*                          */
@@ -204,6 +204,7 @@ stuTime toStuTime(time_t t){
 	thistime.day=day(t);
 	thistime.hour=hour(t);
 	thistime.minute=minute(t);
+  thistime.second=second(t);
 	if(DEBUGTIME){
 	  Serial.println(" Convert");
   	Serial.print(thistime.year);
@@ -212,6 +213,8 @@ stuTime toStuTime(time_t t){
 	Serial.print(thistime.day);Serial.println(day(t));
 	Serial.print(thistime.hour);Serial.println(hour(t));
 	Serial.print(thistime.minute);Serial.println(minute(t));
+	Serial.print(thistime.second);Serial.println(second(t));
+  
 	}
 	return thistime;
 }
@@ -521,7 +524,7 @@ void setClock(int n){  // set system clock from myDate
 }
 
 void clearScreen(){
-	tft.fillRect(0, (buttonSize.y)+2, screenWidth, screenHeight-buttonSize.y, BLACK);
+	tft.fillRect(0, (buttonSize.y)+2, screenWidth, screenHeight-(2*buttonSize.y), BLACK);
 	 
 }
 
@@ -672,11 +675,19 @@ void showClock(int row) {
 	if(myDates[clockPtr].second!=lastsecond){
 		clearRow(row);
 		// tft.fillRect(0, (3*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
-		tft.setCursor(0,(3*buttonSize.y)+4);
+		tft.setCursor(0,(row*buttonSize.y)+4);
 		tft.setTextColor(GREEN);
 		tft.setTextSize(2);
-		tft.print(datestring(clockPtr));
+    tft.print(String(myDates[clockPtr].year)+":");
+    
+		//tft.print(datestring(clockPtr));
+    
+    tft.print(monthName[myDates[clockPtr].month]);
+    tft.print(":");
+    
 		tft.setTextSize(3);	  
+		tft.print(twochars(myDates[clockPtr].day));
+		tft.print(":");
 		tft.print(timestring(clockPtr));
 		if(DEBUGCLOCK){
 			Serial.print("State:"+String(menuState)+" timestring:"+timestring(clockPtr));
