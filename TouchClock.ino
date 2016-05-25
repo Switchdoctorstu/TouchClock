@@ -100,8 +100,12 @@ int TS_MINX = 220;
 int TS_MINY =180;
 int TS_MAXX =850;
 int TS_MAXY =900;
-int xoffset=10;
+int xoffset=5;
 int yoffset=-12;
+// debounce
+boolean touchDown=false; 
+int buttonDown=0;  // which button is pressed
+double touchTime=0; // what time were we touched at oo-err!
 
 // int i2cdelay=5;//wait after each packet
 int oldcolor, currentcolor;
@@ -124,6 +128,7 @@ int screenHeight = 0;
 int screenRotation = 0;
 int buttonCount=6;
 int menuState=0; // which menu we're in
+boolean editMode=false; // are we editing?
 
 const char *monthName[12] = {// array of month names
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -185,7 +190,15 @@ void loop(){
 	// row 5 = buttons
 	doTouch();
     gettime();   // read the time from the RTC or GPS 
-    showClock(1);  // show clock on row 1    
+	if(myDates[clockPtr].second!=lastsecond){
+	
+		showClock(1);  // show clock on row 1  
+		if(menuState!=0){
+			// we have a list or edit
+			showListItem(3);
+		}
+		lastsecond=myDates[clockPtr].second;
+	}
 }
 
 /**********************************************************/
@@ -243,10 +256,12 @@ void showMenu(){
 	tft.setCursor(07, 05);
 	tft.setTextColor(BLACK);
 	tft.setTextSize(2);
-	tft.print("NOW  SET DEL EDIT NEW LIST");
+	tft.print("NOW  SET Save -  +  Show");
   
 }
 
+
+/*
 void showList(int n) {
 	// show list of dates starting at n
 	int b = buttonCount - 1;
@@ -259,6 +274,7 @@ void showList(int n) {
 	}
 
 }
+*/
 
 void doTouch(){
   digitalWrite(13, HIGH);
@@ -276,6 +292,14 @@ void doTouch(){
   // pressure of 0 means no pressing!
 
 	if (p.z > MINPRESSURE && p.z < MAXPRESSURE) {
+		
+		// debounce
+		if(touchDown==false){
+			// new touch
+			touchTime=millisNow;
+			touchDown=true;
+		}; 
+		
 		if(DEBUGTOUCH){
 			Serial.print("Initial X = "); Serial.print(p.x);
 			Serial.print("\tY = "); Serial.print(p.y);
@@ -283,10 +307,10 @@ void doTouch(){
 		}
 		
 	  // recalibrate
-    if(p.x>TS_MAXX)TS_MAXX=p.x;
-    if(p.y>TS_MAXY)TS_MAXY=p.y;
-    if(p.x<TS_MINX)TS_MINX=p.x;
-    if(p.y<TS_MINY)TS_MINY=p.y;
+		if(p.x>TS_MAXX)TS_MAXX=p.x;
+		if(p.y>TS_MAXY)TS_MAXY=p.y;
+		if(p.x<TS_MINX)TS_MINX=p.x;
+		if(p.y<TS_MINY)TS_MINY=p.y;
   
 		// handle screen rotation
 		
@@ -333,13 +357,20 @@ void doTouch(){
 		   // check button events
 		int grid = p.x/buttonSize.x;
 
-		grid+=(p.y/buttonSize.y*10);
-		buttonEvent(grid);
+		// check de-bounce
+		
+		if(millisNow>touchTime+100){; // what time were we touched at oo-err!
+			grid+=(p.y/buttonSize.y*10);
+			buttonEvent(grid);
+			touchDown=false; // reset the flag
+		}
 		// draw dot where touched	
 		if (((p.y-PENRADIUS) > 0) && ((p.y+PENRADIUS) < tft.height())) {
 		  tft.fillCircle(p.x, p.y, PENRADIUS, currentcolor);
 		  
 		}
+	}else{
+		touchDown=false;
 	}
 
   
@@ -535,108 +566,116 @@ void buttonEvent(int inp){
 	  Serial.println(inp);
 	}
 	if(inp==0)menuState=0;  // NOW button resets state
-	switch (menuState) {
-		case 0: {// Root Display 
-			switch (inp) {
-				case 0: // Now
-				{
-					menuState=0;
-					clearScreen();
-				}
-				break;
-		
-				case 1: // Set
-				{
-					menuState=1;
-					clearScreen();
-					drawEditButtons(2); // draw the up/down triangles starting at row 2
-				
-				}
-				break;
-				case 2: // Delete
-				{
-					menuState=2;
-				}
-				break;
-				case 3: // Edit
-				{
-					menuState=3;
-				}
-				break;
-				case 4: // New
-				{
-					menuState=4;
-				}
-				break;
-				case 5: // List
-				{
-					menuState=5;
-					showList(listPtr);
-				}
-				break;
-				case 6: //list
-				{
-					
-				}
-				break;
-				
-			}
+
+	switch (inp) {
+		case 0: // Now
+		{
+			menuState=0;
+			editMode=false;
+			clearScreen();
+			listPtr=clockPtr;  // reset to point to current clock
 		}
 		break;
-		case 1:{ // clock set
-			switch (inp) {
-				case 40: { // dec year
-					adjYears(clockPtr, -1);
-					Serial.println("Dec year!")	;
-				}
-				break;
-				
-				case 41:  { // decrement months
-					adjMonths(clockPtr, -1);
-				}
-				break;
-				
-				case 42: { // dec days
-					adjDays(clockPtr, -1);
-				}
-				break;
-				case 43:  	  { // decrement Hours
-					adjHours(clockPtr, -1);
-				}
-				break;
-				case 44:  	  { // decrement Minutes
-					adjMinutes(clockPtr, -1);
-				}
-				break;
-				case 20: { // inc year
-					adjYears(clockPtr, 1);
-					Serial.println("Inc year!");
-				}
-						 break;
 
-				case 21: { // inc months
-					adjMonths(clockPtr, 1);
-				}
-						 break;
-
-				case 22: { // inc days
-					adjDays(clockPtr, 1);
-				}
-						 break;
-				case 23: { // inc Hours
-					adjHours(clockPtr, 1);
-				}
-						 break;
-				case 24: { // inc Minutes
-					adjMinutes(clockPtr, 1);
-				}
-						 break;
-			}
+		case 1: // Set
+		{
+			menuState=1;
+			editMode=true;
+			clearScreen();
+			drawEditButtons(2); // draw the up/down triangles starting at row 2
+		
 		}
+		break;
+		case 2: // Save
+		{
+			menuState=2;
+		}
+		break;
+		case 3: // list +
+		{
+			// menuState=3;
+			listPtr++;
+			if(listPtr>=LISTSIZE) listPtr=LISTSIZE-1;
+		}
+		break;
+		case 4: // List -
+		{
+			// menuState=4;
+			listPtr--;
+		if(listPtr<0) listPtr=0; //  LISTSIZE-1;
+		
+		}
+		break;
+		case 5: // show
+		{
+			menuState=5;
+			editMode=false;
+			clearRow(2);clearRow(4);
+			//drawListButtons(2); 
+			showListItem(3); // show curent list item at row 3
+		}
+		break;
+		case 40: { // dec year
+		if(editMode==true){
+			adjYears(listPtr, -1);
+			Serial.println("Dec year!")	;
+		}
+		}
+		break;
+		
+		case 41:  { // decrement months
+		if(editMode==true){
+			adjMonths(listPtr, -1);
+		}}
+		break;
+		
+		case 42: { // dec days
+		if(editMode==true){
+			adjDays(listPtr, -1);
+		}}
+		break;
+		case 43:  	  { // decrement Hours
+		if(editMode==true){
+			adjHours(listPtr, -1);
+		}}
+		break;
+		case 44:  	  { // decrement Minutes
+			if(editMode==true){
+		adjMinutes(listPtr, -1);
+			}}
+		break;
+		case 20: { // inc year
+		if(editMode==true){
+			adjYears(listPtr, 1);
+			Serial.println("Inc year!");
+		}}
+				 break;
+
+		case 21: { // inc months
+		if(editMode==true){
+			adjMonths(listPtr, 1);
+		}}
+				 break;
+
+		case 22: { // inc days
+			if(editMode==true){
+		adjDays(listPtr, 1);
+		}}
+				 break;
+		case 23: { // inc Hours
+			if(editMode==true){
+		adjHours(listPtr, 1);
+			}}
+		break;
+		case 24: { // inc Minutes
+		if(editMode==true){
+			adjMinutes(listPtr, 1);
+		}}
 		break;
 	}
-  
 }
+
+
 
 void drawEditButtons(int row){  // row started at 2
   // show edit triangles
@@ -661,6 +700,28 @@ void drawEditButtons(int row){  // row started at 2
     }
 }
 
+void drawListButtons(int row){  // row started at 2
+  // show edit triangles
+    	// down triangle
+      tft.drawTriangle(
+        (screenWidth/2)    ,(row+3)*buttonSize.y , // peak
+        0, (row+2)*buttonSize.y+1, // bottom left
+        screenWidth,(row+2)*buttonSize.y+1, // bottom right
+        // tft.color565(0, 0, i*24)
+        RED
+    );
+	  // up triangle
+	 tft.drawTriangle(
+        (screenWidth/2)    , row*buttonSize.y , // peak
+        0, (row+1)*buttonSize.y, // bottom left
+        screenWidth, (row+1)*buttonSize.y, // bottom right
+        // tft.color565(0, 0, i*24)
+        RED
+    );
+    // Serial.println("List buttons drawn");
+    
+}
+
 void clearRow(int r) {   // Clear row 
 	tft.fillRect(0, (r * buttonSize.y), tft.width(), buttonSize.y, BLACK);
 
@@ -668,31 +729,38 @@ void clearRow(int r) {   // Clear row
 
 
 void showClock(int row) {
-  // for serial debugging
-  if(DEBUGTIME){
-   Serial.print(timestring(clockPtr));
-   }
-	if(myDates[clockPtr].second!=lastsecond){
-		clearRow(row);
-		// tft.fillRect(0, (3*buttonSize.y)+2, tft.width(),buttonSize.y-1, BLACK);
-		tft.setCursor(0,(row*buttonSize.y)+4);
-		tft.setTextColor(GREEN);
-		tft.setTextSize(2);
-    tft.print(String(myDates[clockPtr].year)+":");
-    
-		//tft.print(datestring(clockPtr));
-    
-    tft.print(monthName[myDates[clockPtr].month]);
-    tft.print(":");
-    
-		tft.setTextSize(3);	  
-		tft.print(twochars(myDates[clockPtr].day));
-		tft.print(":");
-		tft.print(timestring(clockPtr));
-		if(DEBUGCLOCK){
-			Serial.print("State:"+String(menuState)+" timestring:"+timestring(clockPtr));
-		}
-	  lastsecond=myDates[clockPtr].second;
+	clearRow(row);
+	tft.setCursor(0,(row*buttonSize.y)+4);
+	tft.setTextColor(GREEN);
+	tft.setTextSize(2);
+	tft.print(String(myDates[clockPtr].year)+":");
+	tft.print(monthName[myDates[clockPtr].month]);
+	tft.print(":");
+
+	tft.setTextSize(3);	  
+	tft.print(twochars(myDates[clockPtr].day));
+	tft.print(":");
+	tft.print(timestring(clockPtr));
+	if(DEBUGCLOCK){
+		Serial.print("State:"+String(menuState)+" timestring:"+timestring(clockPtr));
 	}
+}
+
+void showListItem(int row) {   // show the curent list item at row n
+  	clearRow(row);
+	tft.setCursor(0,(row*buttonSize.y)+4);
+	tft.setTextColor(GREEN);
+	tft.setTextSize(2);
+	tft.print(String(myDates[listPtr].year)+":");
+	tft.print(monthName[myDates[listPtr].month]);
+	tft.print(":");
+	tft.setTextSize(3);	  
+	tft.print(twochars(myDates[listPtr].day));
+	tft.print(":");
+	tft.print(timestring(listPtr));
+	if(DEBUGCLOCK){
+		Serial.print("State:"+String(menuState)+" itemstring:"+timestring(listPtr));
+	}
+
 }
 
