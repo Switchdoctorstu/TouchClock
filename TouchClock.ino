@@ -637,25 +637,29 @@ void buttonEvent(int inp){
 		break;
 		
 		case 41:  { // decrement months
-		if(editMode==true){
-			adjMonths(listPtr, -1);
-		}}
+			if(editMode==true){
+				adjMonths(listPtr, -1);
+			}
+		}
 		break;
 		
 		case 42: { // dec days
 		if(editMode==true){
 			adjDays(listPtr, -1);
-		}}
+		}
+		}
 		break;
 		case 43:  	  { // decrement Hours
 		if(editMode==true){
 			adjHours(listPtr, -1);
-		}}
+		}
+		}
 		break;
 		case 44:  	  { // decrement Minutes
 			if(editMode==true){
-		adjMinutes(listPtr, -1);
-			}}
+				adjMinutes(listPtr, -1);
+			}
+		}
 		break;
 		case 20: { // inc year
 		if(editMode==true){
